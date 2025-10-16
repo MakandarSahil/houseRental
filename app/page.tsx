@@ -1,9 +1,60 @@
+// src/app/page.tsx
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { MapPin, Users, Star } from "lucide-react"
+import { MapPin, Users, Star, Search, User, Calendar } from "lucide-react"
+import { useAuth } from "@/context/authContext"
+import { useProperty } from "@/services/property/useProperty"
+import { useRouter } from "next/navigation"
 
 export default function Home() {
+  const { user, logout } = useAuth()
+  const { searchByCity, loading } = useProperty()
+  const router = useRouter()
+  
+  const [searchData, setSearchData] = useState({
+    city: "",
+    checkIn: "",
+    checkOut: ""
+  })
+  const [searchError, setSearchError] = useState("")
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!searchData.city.trim()) {
+      setSearchError("Please enter a city name")
+      return
+    }
+
+    setSearchError("")
+    
+    try {
+      await searchByCity(searchData.city)
+      // Navigate to browse page with search parameters
+      const params = new URLSearchParams()
+      params.append('city', searchData.city)
+      if (searchData.checkIn) params.append('checkIn', searchData.checkIn)
+      if (searchData.checkOut) params.append('checkOut', searchData.checkOut)
+      
+      router.push(`/browse?${params.toString()}`)
+    } catch (error) {
+      console.error("Search failed:", error)
+      setSearchError("Failed to search properties. Please try again.")
+    }
+  }
+
+  const handleInputChange = (field: string, value: string) => {
+    setSearchData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+    if (searchError) setSearchError("")
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -11,12 +62,30 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="text-2xl font-bold text-primary">HomeStay</div>
           <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost">Login</Button>
-            </Link>
-            <Link href="/register">
-              <Button className="bg-primary hover:bg-primary/90">Sign Up</Button>
-            </Link>
+            {user ? (
+              <div className="flex items-center gap-4">
+                <Link href="/my-bookings">
+                  <Button variant="ghost" className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    My Bookings
+                  </Button>
+                </Link>
+                <div className="flex items-center gap-2 text-sm">
+                  <User className="w-4 h-4" />
+                  <span>Hello, {user.name}</span>
+                </div>
+                <Button variant="outline" onClick={logout}>Logout</Button>
+              </div>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="ghost">Login</Button>
+                </Link>
+                <Link href="/register">
+                  <Button className="bg-primary hover:bg-primary/90">Sign Up</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -31,20 +100,48 @@ export default function Home() {
 
           {/* Search Bar */}
           <div className="bg-white rounded-lg shadow-lg p-6 max-w-2xl mx-auto">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <input
-                type="text"
-                placeholder="Where are you going?"
-                className="flex-1 px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <input
-                type="date"
-                className="px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <Link href="/browse">
-                <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90">Search</Button>
-              </Link>
-            </div>
+            <form onSubmit={handleSearch}>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Enter city name..."
+                    className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={searchData.city}
+                    onChange={(e) => handleInputChange("city", e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-4">
+                  <input
+                    type="date"
+                    placeholder="Check-in"
+                    className="px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={searchData.checkIn}
+                    onChange={(e) => handleInputChange("checkIn", e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                  />
+                  <input
+                    type="date"
+                    placeholder="Check-out"
+                    className="px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    value={searchData.checkOut}
+                    onChange={(e) => handleInputChange("checkOut", e.target.value)}
+                    min={searchData.checkIn || new Date().toISOString().split('T')[0]}
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 flex items-center gap-2"
+                  disabled={loading}
+                >
+                  <Search className="w-4 h-4" />
+                  {loading ? "Searching..." : "Search"}
+                </Button>
+              </div>
+              {searchError && (
+                <p className="text-destructive text-sm mt-2">{searchError}</p>
+              )}
+            </form>
           </div>
         </div>
       </section>
@@ -92,14 +189,26 @@ export default function Home() {
                 Browse Properties
               </Button>
             </Link>
-            <Link href="/register?role=owner">
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 bg-transparent"
-              >
-                List Your Property
-              </Button>
-            </Link>
+            {!user && (
+              <Link href="/register?role=owner">
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 bg-transparent"
+                >
+                  List Your Property
+                </Button>
+              </Link>
+            )}
+            {user?.role === 'OWNER' && (
+              <Link href="/owner/dashboard">
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 bg-transparent"
+                >
+                  Owner Dashboard
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </section>

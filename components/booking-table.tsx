@@ -15,9 +15,18 @@ interface Booking {
 }
 
 interface BookingTableProps {
-  bookings: Booking[]
-  onMessage?: (bookingId: number) => void
-  onConfirm?: (bookingId: number) => void
+  bookings: {
+    id: string;
+    property: string;
+    guest: string;
+    checkIn: string;
+    checkOut: string;
+    amount: number;
+    status: "Pending" | "Confirmed" | "Cancelled" | "Completed";
+  }[];
+  onMessage: (id: string) => void;
+  onConfirm: (id: string) => void;
+  onReject?: (id: string) => void; // Add reject handler
 }
 
 export function BookingTable({ bookings, onMessage, onConfirm }: BookingTableProps) {

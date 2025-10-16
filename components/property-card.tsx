@@ -5,16 +5,17 @@ import { Card } from "@/components/ui/card"
 import { Edit2, Trash2, BarChart3 } from "lucide-react"
 
 interface PropertyCardProps {
-  id: number
-  title: string
-  location: string
-  price: number
-  bookings: number
-  revenue: number
-  status: "Active" | "Inactive" | "Maintenance"
-  onEdit?: (id: number) => void
-  onDelete?: (id: number) => void
-  onViewStats?: (id: number) => void
+  id: string;
+  title: string;
+  location: string;
+  price: number;
+  bookings: number;
+  revenue: number;
+  status: "Active" | "Inactive";
+  imageUrl?: string;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onViewStats: (id: string) => void;
 }
 
 export function PropertyCard({
